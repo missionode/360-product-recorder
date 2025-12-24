@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Product Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        
+        .viewer-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .product-viewer {
+            width: 100%;
+            max-width: 800px;
+            height: 500px;
+            background: #1e293b;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        #productImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.1s;
+            cursor: grab;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn i {
+            font-size: 1.2rem;
+        }
+        
+        .frame-thumbnails {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 20px;
+            max-width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+        }
+        
+        .thumbnail {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .thumbnail:hover {
+            transform: scale(1.1);
+        }
+        
+        .thumbnail.active {
+            border-color: white;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .instructions {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .product-viewer {
+                height: 400px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-360-degrees"></i> 360° Product Viewer</h1>
+        <button onclick="window.history.back()" class="btn">
+            <i class="fas fa-arrow-left"></i> Back
+        </button>
+    </header>
+    
+    <div class="viewer-container">
+        <div class="product-viewer">
+            <div class="loading" id="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading 360° Viewer...
+            </div>
+            <img id="productImage" alt="360 Product View">
+        </div>
+        
+        <div class="controls">
+            <button onclick="autoRotate()" id="autoRotateBtn" class="btn">
+                <i class="fas fa-play"></i> Auto Rotate
+            </button>
+            <button onclick="downloadDemo()" class="btn">
+                <i class="fas fa-download"></i> Download
+            </button>
+            <button onclick="shareDemo()" class="btn">
+                <i class="fas fa-share-alt"></i> Share
+            </button>
+            <button onclick="deleteDemo()" class="btn" style="background: #ef4444; color: white;">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+        
+        <div class="instructions">
+            <p>Drag the image to rotate • Click thumbnails below to jump to specific angles</p>
+        </div>
+        
+        <div class="frame-thumbnails" id="frameThumbnails">
+            <!-- Thumbnails will be loaded here -->
+        </div>
+    </div>
+    
+    <script>
+        // Get demo ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const demoId = urlParams.get('id');
+        
+        // Viewer state
+        const viewerState = {
+            currentFrame: 0,
+            totalFrames: 0,
+            frames: [],
+            isAutoRotating: false,
+            rotationInterval: null,
+            isDragging: false,
+            startX: 0,
+            demoData: null
+        };
+        
+        // DOM Elements
+        const productImage = document.getElementById('productImage');
+        const loadingElement = document.getElementById('loading');
+        const frameThumbnails = document.getElementById('frameThumbnails');
+        const autoRotateBtn = document.getElementById('autoRotateBtn');
+        
+        // Initialize viewer
+        window.onload = async function() {
+            if (demoId) {
+                await loadDemo(demoId);
+            } else {
+                // Try to load from localStorage if no ID provided
+                const savedDemo = localStorage.getItem('currentDemo');
+                if (savedDemo) {
+                    viewerState.demoData = JSON.parse(savedDemo);
+                    initializeViewer();
+                } else {
+                    loadingElement.innerHTML = 'No demo found. Please create one first.';
+                }
+            }
+            
+            // Add drag controls
+            setupDragControls();
+        };
+        
+        // Load demo from IndexedDB
+        async function loadDemo(id) {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['demos'], 'readonly');
+                const store = transaction.objectStore('demos');
+                const request = store.get(id);
+                
+                request.onsuccess = function(e) {
+                    viewerState.demoData = e.target.result;
+                    if (viewerState.demoData) {
+                        localStorage.setItem('currentDemo', JSON.stringify(viewerState.demoData));
+                        initializeViewer();
+                    } else {
+                        loadingElement.innerHTML = 'Demo not found.';
+                    }
+                };
+                
+                request.onerror = function() {
+                    loadingElement.innerHTML = 'Error loading demo.';
+                };
+            } catch (error) {
+                console.error('Error loading demo:', error);
+                loadingElement.innerHTML = 'Error loading demo.';
+            }
+        }
+        
+        function initializeViewer() {
+            if (!viewerState.demoData || !viewerState.demoData.frames) {
+                loadingElement.innerHTML = 'No frames available.';
+                return;
+            }
+            
+            viewerState.frames = viewerState.demoData.frames;
+            viewerState.totalFrames = viewerState.frames.length;
+            viewerState.currentFrame = 0;
+            
+            if (viewerState.totalFrames > 0) {
+                // Show first frame
+                productImage.src = viewerState.frames[0].data;
+                loadingElement.classList.add('hidden');
+                
+                // Create thumbnails
+                createThumbnails();
+                
+                // Update document title
+                document.title = `${viewerState.demoData.name} - 360° Viewer`;
+            }
+        }
+        
+        function createThumbnails() {
+            frameThumbnails.innerHTML = '';
+            
+            viewerState.frames.forEach((frame, index) => {
+                const thumbnail = document.createElement('img');
+                thumbnail.className = 'thumbnail';
+                thumbnail.src = frame.data;
+                thumbnail.alt = `Frame ${index + 1}`;
+                thumbnail.onclick = () => showFrame(index);
+                
+                if (index === 0) {
+                    thumbnail.classList.add('active');
+                }
+                
+                frameThumbnails.appendChild(thumbnail);
+            });
+        }
+        
+        function showFrame(frameIndex) {
+            if (frameIndex >= 0 && frameIndex < viewerState.totalFrames) {
+                viewerState.currentFrame = frameIndex;
+                productImage.src = viewerState.frames[frameIndex].data;
+                
+                // Update active thumbnail
+                document.querySelectorAll('.thumbnail').forEach((thumb, index) => {
+                    thumb.classList.toggle('active', index === frameIndex);
+                });
+            }
+        }
+        
+        function nextFrame() {
+            const nextIndex = (viewerState.currentFrame + 1) % viewerState.totalFrames;
+            showFrame(nextIndex);
+        }
+        
+        function prevFrame() {
+            const prevIndex = (viewerState.currentFrame - 1 + viewerState.totalFrames) % viewerState.totalFrames;
+            showFrame(prevIndex);
+        }
+        
+        function autoRotate() {
+            if (viewerState.isAutoRotating) {
+                // Stop rotation
+                clearInterval(viewerState.rotationInterval);
+                viewerState.isAutoRotating = false;
+                autoRotateBtn.innerHTML = '<i class="fas fa-play"></i> Auto Rotate';
+            } else {
+                // Start rotation
+                viewerState.isAutoRotating = true;
+                autoRotateBtn.innerHTML = '<i class="fas fa-pause"></i> Stop Rotation';
+                
+                viewerState.rotationInterval = setInterval(() => {
+                    nextFrame();
+                }, 200); // Rotate every 200ms
+            }
+        }
+        
+        function setupDragControls() {
+            productImage.onmousedown = startDrag;
+            productImage.onmousemove = drag;
+            productImage.onmouseup = endDrag;
+            productImage.onmouseleave = endDrag;
+            
+            // Touch events for mobile
+            productImage.ontouchstart = startDragTouch;
+            productImage.ontouchmove = dragTouch;
+            productImage.ontouchend = endDrag;
+        }
+        
+        function startDrag(e) {
+            viewerState.isDragging = true;
+            viewerState.startX = e.clientX;
+            e.preventDefault();
+        }
+        
+        function startDragTouch(e) {
+            if (e.touches.length === 1) {
+                viewerState.isDragging = true;
+                viewerState.startX = e.touches[0].clientX;
+                e.preventDefault();
+            }
+        }
+        
+        function drag(e) {
+            if (!viewerState.isDragging) return;
+            
+            const currentX = e.clientX;
+            const diff = viewerState.startX - currentX;
+            
+            if (Math.abs(diff) > 20) { // Threshold to prevent accidental drags
+                if (diff > 0) {
+                    nextFrame();
+                } else {
+                    prevFrame();
+                }
+                viewerState.startX = currentX;
+            }
+        }
+        
+        function dragTouch(e) {
+            if (!viewerState.isDragging || e.touches.length !== 1) return;
+            
+            const currentX = e.touches[0].clientX;
+            const diff = viewerState.startX - currentX;
+            
+            if (Math.abs(diff) > 20) {
+                if (diff > 0) {
+                    nextFrame();
+                } else {
+                    prevFrame();
+                }
+                viewerState.startX = currentX;
+            }
+        }
+        
+        function endDrag() {
+            viewerState.isDragging = false;
+        }
+        
+        function downloadDemo() {
+            if (!viewerState.demoData) return;
+            
+            const jsonData = JSON.stringify(viewerState.demoData);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${viewerState.demoData.name || 'demo'}.json`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            
+            // Also create a ZIP with all images if needed
+            alert('Demo downloaded successfully!');
+        }
+        
+        function shareDemo() {
+            if (navigator.share) {
+                navigator.share({
+                    title: viewerState.demoData.name,
+                    text: 'Check out this 360° product demo!',
+                    url: window.location.href
+                });
+            } else {
+                // Fallback: Copy URL to clipboard
+                navigator.clipboard.writeText(window.location.href)
+                    .then(() => alert('Link copied to clipboard!'))
+                    .catch(() => alert('Please copy the URL manually: ' + window.location.href));
+            }
+        }
+        
+        async function deleteDemo() {
+            if (!demoId || !confirm('Are you sure you want to delete this demo?')) return;
+            
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['demos'], 'readwrite');
+                const store = transaction.objectStore('demos');
+                store.delete(demoId);
+                
+                localStorage.removeItem('currentDemo');
+                alert('Demo deleted successfully!');
+                window.history.back();
+            } catch (error) {
+                console.error('Error deleting demo:', error);
+                alert('Error deleting demo.');
+            }
+        }
+        
+        // IndexedDB helper
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('Product360DB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+            });
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    prevFrame();
+                    break;
+                case 'ArrowRight':
+                    nextFrame();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    autoRotate();
+                    break;
+            }
+        });
+    </script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+    "name": "360° Product Recorder",
+    "short_name": "Product360",
+    "description": "Capture and view products in 360 degrees",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#4f46e5",
+    "theme_color": "#4f46e5",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "categories": ["business", "productivity", "photography"],
+    "screenshots": [
+        {
+            "src": "screenshots/screenshot1.png",
+            "sizes": "1280x720",
+            "type": "image/png"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "New 360° Capture",
+            "short_name": "Capture",
+            "description": "Start a new 360-degree product capture",
+            "url": "/?source=capture"
+        },
+        {
+            "name": "View Demos",
+            "short_name": "View",
+            "description": "View your 360-degree product demos",
+            "url": "/?source=view"
+        }
+    ]
+}

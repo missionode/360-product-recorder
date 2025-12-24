@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
+    <title>360° Product Recorder</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-360-degrees"></i> 360° Product Recorder</h1>
+            <p class="subtitle">Capture and view products in 360 degrees</p>
+        </header>
+
+        <main>
+            <div class="app-card">
+                <h2>Get Started</h2>
+                <p class="description">Create immersive 360-degree product demos using your camera</p>
+                
+                <div class="button-container">
+                    <button id="createBtn" class="btn primary">
+                        <i class="fas fa-camera"></i> Create 360° Demo
+                    </button>
+                    <button id="viewBtn" class="btn secondary">
+                        <i class="fas fa-eye"></i> View 360° Demo
+                    </button>
+                    <button id="uploadBtn" class="btn tertiary">
+                        <i class="fas fa-upload"></i> Upload File
+                    </button>
+                </div>
+                
+                <div id="progressSection" class="hidden">
+                    <h3>Capture Progress</h3>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span id="progressText">0%</span>
+                    </div>
+                    <p class="hint">Move around the product slowly to capture all angles</p>
+                </div>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <i class="fas fa-video"></i>
+                    <h3>Capture</h3>
+                    <p>Record 360-degree video around your product</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-cube"></i>
+                    <h3>View</h3>
+                    <p>Interactive 360-degree product viewer</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Share</h3>
+                    <p>Upload and download your recordings</p>
+                </div>
+            </div>
+
+            <div class="recent-demos hidden" id="recentDemos">
+                <h2>Recent Demos</h2>
+                <div class="demo-grid" id="demoGrid">
+                    <!-- Recent demos will be loaded here -->
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>360° Product Recorder PWA | Works offline</p>
+            <div class="pwa-status">
+                <span id="pwaStatus">Loading...</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Capture 360° Video</h2>
+                <button id="closeCamera" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <video id="cameraFeed" autoplay playsinline></video>
+                    <canvas id="captureCanvas" class="hidden"></canvas>
+                </div>
+                <div class="camera-controls">
+                    <button id="startCapture" class="btn primary">
+                        <i class="fas fa-record-vinyl"></i> Start Capture
+                    </button>
+                    <button id="stopCapture" class="btn danger hidden">
+                        <i class="fas fa-stop"></i> Stop Capture
+                    </button>
+                    <button id="captureFrame" class="btn secondary">
+                        <i class="fas fa-camera"></i> Capture Frame
+                    </button>
+                </div>
+                <div class="instructions">
+                    <h3>Instructions:</h3>
+                    <ol>
+                        <li>Place your product in the center</li>
+                        <li>Click "Start Capture" to begin</li>
+                        <li>Slowly move around the product</li>
+                        <li>Capture frames from all angles</li>
+                        <li>Stop when progress reaches 100%</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload 360° Demo</h2>
+                <button id="closeUpload" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-zone" id="uploadZone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Drop files here or click to browse</h3>
+                    <p>Supports: Images, Videos, JSON project files</p>
+                    <input type="file" id="fileInput" multiple accept="image/*,video/*,.json,.zip">
+                </div>
+                <div class="upload-progress hidden" id="uploadProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="uploadProgressFill"></div>
+                    </div>
+                    <span id="uploadProgressText">0%</span>
+                </div>
+                <div class="uploaded-files" id="uploadedFiles">
+                    <!-- Uploaded files will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
